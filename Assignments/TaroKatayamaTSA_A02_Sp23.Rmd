@@ -1,9 +1,11 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2023"
 subtitle: "Assignment 2 - Due date 02/03/23"
-author: "Student Name"
+author: "Taro Katayama"
 output: pdf_document
 geometry: margin=2.54cm
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Submission Instructions
@@ -22,7 +24,13 @@ R packages needed for this assignment:"forecast","tseries", and "dplyr". Install
 
 ```{r}
 #Load/install required package here
-
+library(forecast)
+#install.packages("tseries")
+#install.packages("dplyr")
+library(dplyr)
+library(tseries)
+library(lubridate)
+library(ggplot2)
 ```
 
 
@@ -32,7 +40,8 @@ Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Produ
 
 ```{r}
 #Importing data set
-
+table_10.1<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
+                        header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
 ```
 
 
@@ -40,7 +49,12 @@ Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Produ
 You will work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series only. Use the command head() to verify your data.
 
 ```{r}
-
+table_10.1<- table_10.1[, c("Month", "Total.Biomass.Energy.Production", "Total.Renewable.Energy.Production", "Hydroelectric.Power.Consumption")]
+head(table_10.1)
+str(table_10.1)
+date<- ym(table_10.1$Month)
+format(date,format="%Y-%m")
+table_10.1<-cbind(date, table_10.1[,2:4])
 ```
 
 
@@ -48,7 +62,8 @@ You will work only with the following columns: Total Biomass Energy Production, 
 Transform your data frame in a time series object and specify the starting point and frequency of the time series using the function ts().
 
 ```{r}
-
+?ts()
+ts_table_10.1<- ts(table_10.1[,2:4], start = 1, end = 597, frequency = 1)
 ```
 
 
@@ -56,7 +71,12 @@ Transform your data frame in a time series object and specify the starting point
 Compute mean and standard deviation for these three series.
 
 ```{r}
-
+mean(ts_table_10.1[,1])
+sd(ts_table_10.1[,1])
+mean(ts_table_10.1[,2])
+sd(ts_table_10.1[,2])
+mean(ts_table_10.1[,3])
+sd(ts_table_10.1[,3])
 ```
 
 
@@ -64,7 +84,18 @@ Compute mean and standard deviation for these three series.
 Display and interpret the time series plot for each of these variables. Try to make your plot as informative as possible by writing titles, labels, etc. For each plot add a horizontal line at the mean of each series in a different color.
 
 ```{r}
-
+ggplot(table_10.1, aes(x=date, y=Total.Biomass.Energy.Production)) +
+            geom_line(color="blue")+ geom_line(aes(y= mean(Total.Biomass.Energy.Production)), color = "red")+
+  xlab("Date")+ ylab("Total Biomass Energy Production")+
+  theme_bw()
+ggplot(table_10.1, aes(x=date, y=Total.Renewable.Energy.Production)) +
+            geom_line(color="blue")+ geom_line(aes(y= mean(Total.Renewable.Energy.Production)), color = "purple")+
+  xlab("Date")+ ylab("Total Renewable Energy Production")+
+  theme_bw()
+ggplot(table_10.1, aes(x=date, y=Hydroelectric.Power.Consumption)) +
+            geom_line(color="blue")+ geom_line(aes(y= mean(Hydroelectric.Power.Consumption)), color = "green")+
+  xlab("Date")+ ylab("Hydroelectric Power Consumption")+
+  theme_bw()
 ```
 
 
@@ -72,7 +103,14 @@ Display and interpret the time series plot for each of these variables. Try to m
 Compute the correlation between these three series. Are they significantly correlated? Explain your answer.
 
 ```{r}
+?cor.test
+cor.test(ts_table_10.1[,1], ts_table_10.1[,2])
+#total biomass production and total renewable energy production are significantly correlated. Since biomass is a renewable energy source, the rise in biomass production also relates to total renewable energy production. However, just because these two variables are correlated, it does not mean that the rise in total renewable energy is caused by a rise in biomass production.
 
+cor.test(ts_table_10.1[,2], ts_table_10.1[,3])
+#there is a slight negative correlation between total renewable energy production and hydroelectric power consumption of -0.100. This correlation is significant with a p value of <0.05. 
+cor.test(ts_table_10.1[,1], ts_table_10.1[,3])
+#There is a moderate negative correlation between total biomass production and hydroelectric power consumption of -0.300. This correlation is significant with a p value of <0.05. 
 ```
 
 
@@ -80,7 +118,11 @@ Compute the correlation between these three series. Are they significantly corre
 Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?
 
 ```{r}
-
+acf(ts_table_10.1[,1],lag.max = 40)
+acf(ts_table_10.1[,2],lag.max = 40)
+acf(ts_table_10.1[,3], lag.max = 40)
+#total biomass production and total renewable energy production have similar behaviors. Since both of these variables increased with time, as you go further out in the lag, the autocorrelation decreased. 
+#hydroelectric consumption had a cyclical autocorrelation as the lags increased. This means that hydroelectric consumption has a seasonality to it. 
 ```
 
 
@@ -88,7 +130,11 @@ Compute the autocorrelation function from lag 1 up to lag 40 for these three var
 Compute the partial autocorrelation function from lag 1 to lag 40 for these three variables. How these plots differ from the ones in Q6?
 
 ```{r}
+pacf(ts_table_10.1[,1],lag.max = 40)
+pacf(ts_table_10.1[,2],lag.max = 40)
+pacf(ts_table_10.1[,3], lag.max = 40)
 
+#these plots differ in that there is less of a noticeable trend or pattern with the pacf compared to acf.
 ```
 
 
