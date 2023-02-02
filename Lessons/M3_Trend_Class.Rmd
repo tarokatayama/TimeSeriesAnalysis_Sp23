@@ -167,3 +167,8 @@ Acf(ts_inflow_data[,1],lag.max = 50)
 Pacf(ts_inflow_data[,1],lag.max = 50)
 ```
 
+```{r}
+inflow_data<- inflow_data[1:(nobs-12),]
+```
+
+
