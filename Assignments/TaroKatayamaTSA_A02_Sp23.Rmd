@@ -135,10 +135,11 @@ acf(ts_table_10.1[,2],lag.max = 40)
 acf(ts_table_10.1[,3], lag.max = 40)
 #total biomass production and total renewable energy production have similar behaviors. 
 #Since both of these variables increased with time, as you go further out in the lag, 
-#the autocorrelation decreased. 
+#the autocorrelation decreased. The autocorrelation is very strong even after 40 lags.
 
 #hydroelectric consumption had a cyclical autocorrelation as the lags increased. This means 
-#that hydroelectric consumption has a seasonality to it. 
+#that hydroelectric consumption has a seasonality to it. Even after 40 lags, it is still has
+#significant autocorrelation.
 ```
 
 
@@ -151,7 +152,8 @@ pacf(ts_table_10.1[,2],lag.max = 40)
 pacf(ts_table_10.1[,3], lag.max = 40)
 
 #these plots differ in that there is a muted trend or pattern with the pacf compared to acf. 
-#This is because the intermediate variable is removed.
+#This is because the intermediate variable is removed. The intermediate value has a strong
+#influence over the correlation.
 ```
 
 
