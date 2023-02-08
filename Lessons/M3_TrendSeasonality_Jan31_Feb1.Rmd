@@ -34,7 +34,7 @@ Let's continue working with our inflow data for reservoirs in Brazil.
 ```{r}
 
 #Importing time series data from text file#
-raw_inflow_data <- read.table(file="../Data/inflowtimeseries.txt",header=FALSE,skip=0)
+raw_inflow_data <- read.table(file="./Data/inflowtimeseries.txt",header=FALSE,skip=0)
 
 #Trim the table to include only columns you need
 nhydro <- ncol(raw_inflow_data)-2
@@ -140,6 +140,7 @@ Let's identify and remove trend component like we leaned on the recorded videos 
 ```{r}
 #Create vector t
 t <- 1:nobs
+#selecting the river
 iHP=4
 
 #Fit a linear trend to TS of iHP
@@ -155,9 +156,15 @@ ggplot(inflow_data,aes(x=my_date,y=inflow_data[,iHP+1]))+
 
 ```{r}
 #remove the trend from series
+beta0<- linear_trend$coefficients[1]
+beta1<- linear_trend$coefficients[2]
 
 
+detrend_inflow_data<- inflow_data[,(iHP+1)]-(beta0+beta1*t)
 
+ggplot(inflow_data,aes(x=my_date,y=inflow_data[,iHP+1]))+
+  geom_line(color="blue")+
+  geom_line(aes(y=detrend_inflow_data),color="green")
 ```
 Note that blue line is our original series, red lien is our trend, green line is our original series minus the trend or in other words the detrended series. And in orange is the trend line for the detrended series which has slope 0 meaning we were able to effectively eliminate the trend with a linear model.
 
@@ -167,8 +174,25 @@ Now let's shift attention to the seasonal component.
 
 ```{r}
 #Use seasonal means model
+iHP=1
 
+dummies <- seasonaldummy(ts_inflow_data[,iHP])
 
+seas_means_model <- lm(inflow_data[,iHP+1] ~ dummies)
+
+summary(seas_means_model)
+
+beta0<- seas_means_model$coefficients[1]
+beta1<- seas_means_model$coefficients[2:12]
+
+inflow_seas_comp <- array(0,nobs)
+for (i in 1:nobs){
+  inflow_seas_comp[i] = beta0 + beta1 %*% dummies[i,]
+}
+
+ggplot(inflow_data,aes(x=my_date,y=inflow_data[,iHP+1]))+
+  geom_line(color="blue")+
+  geom_line(aes(y=inflow_seas_comp), color = "orange")
 ```
 
 ##Exercise
@@ -194,8 +218,8 @@ Check for deterministic trend.
 
 #Since I have seasonal data I cannot use the simple MannKendall()
 #another example of functions that need a ts object
-
-
+SMKtest<- SeasonalMannKendall(ts_inflow_data[,iHP])
+print(summary(SMKtest))
 #Use yearly date to run Mann Kendall
 
 ```
@@ -221,6 +245,7 @@ Used to detect stochastic trend.
 #Null hypothesis is that data has a unit root
 print("Results for ADF test/n")
 
+print(adf.test(ts_inflow_data[,iHP],alternative = "stationary"))
 #Now let's try the yearly data
 print("Results for ADF test on yearly data/n")
 

@@ -32,6 +32,24 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 
 ```{r}
 #Load/install required package here
+library(forecast)
+library(tseries)
+library(lubridate)
+library(Kendall)
+library(ggplot2)
+```
+
+```{r}
+#Importing data set
+table_10.1<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
+                        header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
+
+table_10.1<- table_10.1[, c("Month", "Total.Biomass.Energy.Production", "Total.Renewable.Energy.Production", "Hydroelectric.Power.Consumption")]
+
+date<- ym(table_10.1$Month)
+table_10.1<-cbind(date, table_10.1[,2:4])
+
+ts_table_10.1 <- ts(table_10.1[,2:4], frequency = 12, start = c(1973,1))
 
 ```
 
@@ -39,6 +57,24 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 
 ### Q1
 Create a plot window that has one row and three columns. And then for each object on your data frame, fill the plot window with time series plot, ACF and PACF. You may use the some code form A2, but I want all three plots on the same window this time. (Hint: use par() function)
+
+```{r}
+name=colnames(table_10.1)
+for (i in 1:4){
+  par(mfrow=c(1,3))
+  Acf(ts_table_10.1[,i], lag.max = 40)
+  Pacf(ts_table_10.1[,i], lag.max = 40)
+  plot(table_10.1$date, table_10.1$name[i+1], type = "l", col= "blue")
+}
+
+
+par(mfrow=c(1,3))
+plot(table_10.1$date, table_10.1$Total.Biomass.Energy.Production, type = "l", col= "blue", xlab = "date", ylab = "Total Renewable Energy Production")+ theme_bw()
+Acf(ts_table_10.1[,1], lag.max = 40)+ theme_bw()
+Pacf(ts_table_10.1[,1], lag.max = 40)+ theme_bw()
+
+
+```
 
 ### Q2
 From the plot in Q1, do the series Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption appear to have a trend? If yes, what kind of trend?
