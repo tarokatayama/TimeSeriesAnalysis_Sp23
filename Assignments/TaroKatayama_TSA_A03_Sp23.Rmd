@@ -44,7 +44,9 @@ library(ggplot2)
 table_10.1<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
                         header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
 
-table_10.1<- table_10.1[, c("Month", "Total.Biomass.Energy.Production", "Total.Renewable.Energy.Production", "Hydroelectric.Power.Consumption")]
+table_10.1<- table_10.1[, c("Month", "Total.Biomass.Energy.Production", 
+                            "Total.Renewable.Energy.Production", 
+                            "Hydroelectric.Power.Consumption")]
 
 date<- ym(table_10.1$Month)
 table_10.1<-cbind(date, table_10.1[,2:4])
@@ -59,90 +61,69 @@ ts_table_10.1 <- ts(table_10.1[,2:4], frequency = 12, start = c(1973,1))
 Create a plot window that has one row and three columns. And then for each object on your data frame, fill the plot window with time series plot, ACF and PACF. You may use the some code form A2, but I want all three plots on the same window this time. (Hint: use par() function)
 
 ```{r}
+
 name = colnames(table_10.1)
-for (i in 1:4){
+
+for (i in 1:3){
   
   par(mfrow=c(1,3))
-  plot(table_10.1$date, table_10.1[,i+1], type = "l", col= "blue", xlab = "date", ylab = name[i+1])
-  Acf(ts_table_10.1[,i], lag.max = 40, main = paste0(name[i+1]," ACF"))
-  Pacf(ts_table_10.1[,i], lag.max = 40, main = paste0(name[i+1], "PCF"))
+  plot(ts_table_10.1[,i], type = "l", col= "blue", xlab = "date", 
+       ylab = name[i+1], main = name[i+1])
+  Acf(ts_table_10.1[,i], lag.max = 40, 
+      main = paste0(" ACF"))
+  Pacf(ts_table_10.1[,i], lag.max = 40, 
+       main = paste0("PCF"))
   
 }
-```
-
-
-```{r}
-par(mfrow=c(1,3))
-plot(table_10.1$date, table_10.1$Total.Biomass.Energy.Production, type = "l", col= "blue", xlab = "date", ylab = "Total Biomass Energy Production")+ theme_bw()
-Acf(ts_table_10.1[,1], lag.max = 40, main = "ACF Total Biomass Energy Production")+ theme_bw()
-Pacf(ts_table_10.1[,1], lag.max = 40, main = "PCF Total Biomass Energy Production") + theme_bw()
-
-par(mfrow=c(1,3))
-plot(table_10.1$date, table_10.1$Total.Renewable.Energy.Production, type = "l", col= "blue", xlab = "date", ylab = "Total Renewable Energy Production")+ theme_bw()
-Acf(ts_table_10.1[,2], lag.max = 40, main = "ACF Total Renewable Energy Production")+ theme_bw()
-Pacf(ts_table_10.1[,2], lag.max = 40, main = "PCF Total Renewable Energy Production") + theme_bw()
-
-par(mfrow=c(1,3))
-plot(table_10.1$date, table_10.1$Hydroelectric.Power.Consumption, type = "l", col= "blue", xlab = "date", ylab = "Hydroelectric Power Consumption")+ theme_bw()
-Acf(ts_table_10.1[,3], lag.max = 40, main = "ACF Hydroelectric Power Consumption")+ theme_bw()
-Pacf(ts_table_10.1[,3], lag.max = 40, main = "PCF Hydroelectric Power Consumption") + theme_bw()
 ```
 
 ### Q2
 From the plot in Q1, do the series Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption appear to have a trend? If yes, what kind of trend?
 
+Both total biomass energy production and total renewable energy production have a increasing trend over time, with high autocorrelation. These two series' also has some significant pacf, which indicates that there are some sudden increases/decreases in total energy production that deviates from the trend. Hydroelectric power consumption has a slightly negative trend over time, with cyclical autocorrelation, which indicates seasonality. There are some signficant pacf values, which again indicates some sudden increases/decreases that deviates from the trend.
+
 ### Q3
 Use the *lm()* function to fit a linear trend to the three time series. Ask R to print the summary of the regression. Interpret the regression output, i.e., slope and intercept. Save the regression coefficients for further analysis.
+
 ```{r}
+#Fit a linear trend to TS of Total biomass energy production (TBE)
 nobs<- nrow(table_10.1)
 t<- 1:nobs
+TBE<- 2
+linear_trend_TBE <- lm(table_10.1[,TBE] ~ t)
+summary(linear_trend_TBE)
+#the slope is positive at 0.48, and the intercept is positive at 133.7
 
-for (i in 2:4){
-  assign(paste0("linear_trend",i),lm(table_10.1[,i] ~ t))
-}
-summary(linear_trend2)
-summary(linear_trend3)
-summary(linear_trend4)
-```
-
-
-```{r}
-#Fit a linear trend to TS of TEP
-TEP<- 2
-linear_trend_TEP <- lm(table_10.1[,TEP] ~ t)
-summary(linear_trend_TEP)
-
-#Fit a linear trend to TS of TRE
+#Fit a linear trend to TS of Total renewable energy production (TRE)
 TRE<- 3
 linear_trend_TRE <- lm(table_10.1[,TRE] ~ t)
 summary(linear_trend_TRE)
+#the slope is positive at 0.94, and the intercept is positive at 312.24
 
-#Fit a linear trend to TS of HPC
+#Fit a linear trend to TS of Hydroelectric power consumption (HPC)
 HPC<- 4
 linear_trend_HPC <- lm(table_10.1[,HPC] ~ t)
 summary(linear_trend_HPC)
+#the slope is slightly negative at -0.08, and the intercept is positive at 259.90
 ```
  
 ### Q4
 Use the regression coefficients from Q3 to detrend the series. Plot the detrended series and compare with the plots from Q1. What happened? Did anything change?
 
 ```{r}
-#for (i in 2:4){
-  #assign(paste0("beta0_",i),linear_trend[i]$coefficients[i-1])
-#}
-
-
-
 #remove the trend from series
-beta0_TEP<- linear_trend_TEP$coefficients[1]
-beta1_TEP<- linear_trend_TEP$coefficients[2]
+beta0_TBE<- linear_trend_TBE$coefficients[1]
+beta1_TBE<- linear_trend_TBE$coefficients[2]
 
 
-detrend_TEP<- table_10.1[,TEP]-(beta0_TEP+beta1_TEP*t)
+detrend_TBE<- table_10.1[,TBE]-(beta0_TBE+beta1_TBE*t)
 
-ggplot(table_10.1,aes(x=date,y=table_10.1[,TEP]))+
+ggplot(table_10.1,aes(x=date,y=table_10.1[,TBE]))+
+  ylab("Energy Production")+
   geom_line(color="blue")+
-  geom_line(aes(y=detrend_TEP),color="green")
+  geom_line(aes(y=detrend_TBE),color="green")
+#The detrended series centers around 0 and shows the residuals. 
+#The original plot shows both residuals and trend.
 
 #remove the trend from series
 beta0_TRE<- linear_trend_TRE$coefficients[1]
@@ -152,7 +133,10 @@ detrend_TRE<- table_10.1[,TRE]-(beta0_TRE+beta1_TRE*t)
 
 ggplot(table_10.1,aes(x=date,y=table_10.1[,TRE]))+
   geom_line(color="blue")+
+  ylab("Energy Production")+
   geom_line(aes(y=detrend_TRE),color="green")
+#The detrended series centers around 0 and shows the residuals. 
+#The original plot shows both residuals and trend.
 
 #remove the trend from series
 beta0_HPC<- linear_trend_HPC$coefficients[1]
@@ -162,31 +146,43 @@ detrend_HPC<- table_10.1[,HPC]-(beta0_HPC+beta1_HPC*t)
 
 ggplot(table_10.1,aes(x=date,y=table_10.1[,HPC]))+
   geom_line(color="blue")+
+  ylab("Energy Consumption")+
   geom_line(aes(y=detrend_HPC),color="green")
+#The detrended series centers around 0 and shows the residuals. 
+#The original plot shows both residuals and trend. 
+#The residuals are quite large here so something more might be going on (seasonality).
 ```
 
 ### Q5
 Plot ACF and PACF for the detrended series and compare with the plots from Q1. Did the plots change? How?
 ```{r}
-detrend_matrix<- cbind(detrend_TEP,detrend_TRE,detrend_HPC)
-ts_detrend<- ts(detrend_matrix[,1:3])
-
-name2<- 
-par(mfrow=c(1,2))
-
-for (i in 1:4){
+detrend_matrix<- cbind(detrend_TBE,detrend_TRE,detrend_HPC)
+#ACF
+for (i in 1:3){
   
   par(mfrow=c(1,2))
   Acf(ts_table_10.1[,i], lag.max = 40, main = paste0(name[i+1]," ACF"))
-  Acf(ts_detrend[,i], lag.max = 40, main = paste0(name[i+1]," ACF"))
-  
+  Acf(detrend_matrix[,i], lag.max = 40, main = paste0("Detrend."," ACF"))
   
 }
-Pacf(ts_table_10.1[,i], lag.max = 40, main = paste0(name[i+1], "PCF"))
+#the ACF has similar overall trend in total biomass energy production 
+#and total renewable energy production. 
+#However, these two series have an undulating ACF with the detrended series. 
+#For hydroelectric power, the acf is very similar to each other. 
+#However, the detrended acf seems to show more of a drastic cyclical pattern. 
+#This means that there may be another factor besides trend that is affecting the ACF.
 
+#PACF
+for (i in 1:3){
+  
+  par(mfrow=c(1,2))
+  Pacf(ts_table_10.1[,i], lag.max = 40, main = paste0(name[i+1]," PACF"))
+  Pacf(detrend_matrix[,i], lag.max = 40, main = paste0("Detrend."," PACF"))
+  
+}
+#the pacf is very similar to each other for all the series. 
+#This means that the plots are still heavily autocorrelated even with trends removed. 
 
-Acf(ts_detrend[,3], lag.max = 40, main = "ACF Hydroelectric Power Consumption")+ theme_bw()
-Pacf(ts_table_10.1[,3], lag.max = 40, main = "PCF Hydroelectric Power Consumption") + theme_bw()
 ```
 
 ## Seasonal Component
@@ -196,12 +192,10 @@ Set aside the detrended series and consider the original series again from Q1 to
 ### Q6
 Do the series seem to have a seasonal trend? Which serie/series? Use function *lm()* to fit a seasonal means model (i.e. using the seasonal dummies) to this/these time series. Ask R to print the summary of the regression. Interpret the regression output. Save the regression coefficients for further analysis.
 ```{r}
-#only the hydroelectric power consumption seems to have a trend. I can tell because of the cyclical nature of the ACF plot. 
-
 #Use seasonal means model
 names2<- c("TBE", "TRE", "HPC")
 
-for (i in 1:4){
+for (i in 1:3){
   assign(paste0("dummies"), seasonaldummy(ts_table_10.1[,i]))
   assign(paste0("seas_means_model",names2[i]), lm(table_10.1[,i+1] ~ dummies))
 }
@@ -209,11 +203,16 @@ for (i in 1:4){
 summary(seas_means_modelTBE)
 summary(seas_means_modelTRE)
 summary(seas_means_modelHPC)
+
+#only the hydroelectric power consumption has a seasonal trend. 
+#Only the hydroelectric power consumption has p values that are significant.
+
 ```
 
 ### Q7
 Use the regression coefficients from Q6 to deseason the series. Plot the deseason series and compare with the plots from part Q1. Did anything change?
 ```{r}
+#I am only plotting hydroelectric consumption, as this is the only one with seasonality
 beta0<- seas_means_modelHPC$coefficients[1]
 beta1<- seas_means_modelHPC$coefficients[2:12]
 
@@ -223,28 +222,34 @@ for (i in 1:nobs){
   hydro_seas_comp[i] = beta0 + beta1 %*% dummies[i,]
   
 }
-ggplot(table_10.1,aes(x=date,y=table_10.1[,4]))+
-  geom_line(color="blue")+
-  geom_line(aes(y=hydro_seas_comp), color = "orange")
-
+#ggplot(table_10.1,aes(x=date,y=table_10.1[,4]))+
+  #geom_line(color="blue")+
+  #geom_line(aes(y=hydro_seas_comp), color = "orange")
 
 deseason_data<- table_10.1[,4]- hydro_seas_comp
 
 ggplot(table_10.1,aes(x=date,y=table_10.1[,4]))+
   geom_line(color="blue")+
+  ylab("Power consumption")+
   geom_line(aes(y=deseason_data),col = "green")
 
+#the deseason plot centers around 0 and shows the residuals. 
+#With seasonality removed, the graph does not swing dramatically. 
 ```
 
 ### Q8
 Plot ACF and PACF for the deseason series and compare with the plots from Q1. Did the plots change? How?
 ```{r}
-Acf(ts_table_10.1[,3], lag.max = 40, main = "ACF Hydroelectric Power Consumption")+ theme_bw()
-Pacf(ts_table_10.1[,3], lag.max = 40, main = "PCF Hydroelectric Power Consumption") + theme_bw()
+par(mfrow=c(1,2))
+Acf(ts_table_10.1[,3], lag.max = 40, main = "ACF Hydroelectric")+ theme_bw()
+Acf(deseason_data, lag.max = 40, main = "ACF Hydroelectric deseason")+ theme_bw()
+#the acf shows that with the season removed, the plot looks more like the 
+#total biomass energy production acf plot. 
+#This means that seasonality was causing the cyclical nature of the acf plot. 
 
-
-Acf(ts_table_10.1[,3], lag.max = 40, main = "ACF Hydroelectric Power Consumption")+ theme_bw()
-Pacf(ts_table_10.1[,3], lag.max = 40, main = "PCF Hydroelectric Power Consumption") + theme_bw()
+Pacf(ts_table_10.1[,3], lag.max = 40, main = "PCF Hydroelectric") + theme_bw()
+Pacf(deseason_data, lag.max = 40, main = "PCF Hydroelectric deseason") + theme_bw()
+#There are less significant pacf values with the seasons removed.
 ```
 
 
