@@ -27,7 +27,8 @@ library(ggplot2)
 library(forecast)
 library(tseries)
 library(Kendall)
-
+library(lubridate)
+library(tidyverse)
 ```
 
 ## Questions 
@@ -37,12 +38,12 @@ Consider the same data you used for A3 from the spreadsheet "Table_10.1_Renewabl
 
 ```{r}
 #Importing data set - using xlsx package
-table_10.1<- read_xlsx("./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx", skip = 11)
 
 table_10.1<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
                         header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
-
-Tot_renewable_energy<- table_10.1[,4]
+table_10.1$Month<- ym(table_10.1$Month)
+colnames(table_10.1)
+Tot_renewable_energy<- table_10.1[,c("Month","Total.Renewable.Energy.Production")]
 ```
 
 
@@ -58,9 +59,11 @@ Difference the "Total Renewable Energy Production" series using function diff().
 Try differencing at lag 1 only once, i.e., make `lag=1` and `differences=1`. Plot the differenced series Do the series still seem to have trend?
 
 ```{r}
+diffy_tot_renewable_energy<- diff(Tot_renewable_energy$Total.Renewable.Energy.Production, lag = 1, differences = 1)
+plot(diffy_tot_renewable_energy, type = "l")
 
 ```
-
+Hard to tell if there is a trend. The difference may be growing greater with greater number of observations. 
 ### Q2
 
 Now let's compare the differenced series with the detrended series you calculated on A3. In other words, for the "Total Renewable Energy Production" compare the differenced series from Q1 with the series you detrended in A3 using linear regression. (Hint: Just copy and paste part of your code for A3)
@@ -68,6 +71,19 @@ Now let's compare the differenced series with the detrended series you calculate
 Copy and paste part of your code for A3 where you compute regression for Total Energy Production and the detrended Total Energy Production
 
 ```{r}
+nobs<- nrow(table_10.1)
+t<- 1:nobs
+TRE<- 5
+linear_trend_TRE <- lm(table_10.1[,TRE] ~ t)
+#remove the trend from series
+beta0_TRE<- linear_trend_TRE$coefficients[1]
+beta1_TRE<- linear_trend_TRE$coefficients[2]
+
+detrend_TRE<- table_10.1[,TRE]-(beta0_TRE+beta1_TRE*t)
+
+par(mfrow=c(1,2))
+plot(detrend_TRE, type ="l")
+plot(diffy_tot_renewable_energy, type = "l")
 
 ```
 
@@ -76,16 +92,22 @@ Create a data frame with 4 columns: month, original series, detrended by Regress
 
 ```{r}
 #Data frame - remember to not include January 1973
-
-
+detrend_TRE<- detrend_TRE[2:597]
+Tot_renewable_energy<- Tot_renewable_energy[2:nobs,]
+df<- data_frame(Date=Tot_renewable_energy$Month, Total.Renewable.Energy=Tot_renewable_energy$Total.Renewable.Energy.Production,
+                Detrend=detrend_TRE, Diffy=diffy_tot_renewable_energy)
 ```
 
 ### Q4
 Using ggplot() create a line plot that shows the three series together. Make sure you add a legend to the plot.
 
 ```{r}
-#Use ggplot
+df_longer<- pivot_longer(df, cols = c("Total.Renewable.Energy", "Detrend", "Diffy"))
 
+#Use ggplot
+ggplot(df_longer)+
+  geom_line(aes(x=Date, y=value, color=name))+
+  theme_bw()
 ```
 
 
