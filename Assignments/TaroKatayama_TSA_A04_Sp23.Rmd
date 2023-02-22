@@ -117,29 +117,47 @@ Plot the ACF for the three series and compare the plots. Add the argument `ylim=
 ```{r}
 #Compare ACFs
 
+ts_df<- ts(df[,2:4], frequency = 12, start = c(1973, 2))
+name = colnames(ts_df)
+par(mfrow=c(1,3))
+for (i in 1:3){
+  Acf(ts_df[,i], lag.max = 40, ylim=c(-0.5,1), main=name[i])
+}
 ```
-
+The differencing was most efficient at eliminating the trend. This is because the differencing ACF is sporadic, indicating that the trend has been for the most part removed. 
 
 ### Q6
 Compute the Seasonal Mann-Kendall and ADF Test for the original "Total Renewable Energy Production" series. Ask R to print the results. Interpret the results for both test. Whats the conclusion from the Seasonal Mann Kendall test? What's the conclusion for the ADF test? Do they match what you observed in Q2? Recall that having a unit root means the series has a stochastic trend. And when a series has stochastic trend we need to use a different procedure to remove the trend.
 
 ```{r}
+smktest<- SeasonalMannKendall(ts_df[,1])
+print(summary(smktest))
 
+adftest<- adf.test(ts_df[,1],alternative = "stationary")
+print(adftest)
 ```
-
+The seasonal mann kendall tells us that the series follows a determinstic trend since p value is < 0.05
+Adf test tells us that the trend is stochastic since it has a unit root (p-value>.05)
 ### Q7
-
 Aggregate the original "Total Renewable Energy Production" series by year. You can use the same procedure we used in class. Store series in a matrix where rows represent months and columns represent years. And then take the columns mean using function colMeans(). Recall the goal is the remove the seasonal variation from the series to check for trend. 
 
 ```{r}
+ts_TREP<- ts(table_10.1[,5], frequency = 12, start =c(1973,1), end = c(2021,12))
 
+TREP_matrix <- matrix(ts_TREP,byrow=FALSE,nrow=12)
+TREP_yearly<- colMeans(TREP_matrix)
 ```
 
 ### Q8
-
 Apply the Mann Kendal, Spearman correlation rank test and ADF. Are the results from the test in agreement with the test results for the non-aggregated series, i.e., results for Q6?
 
 ```{r}
+print(summary(MannKendall(TREP_yearly)))
 
+my_year<- c(1973:2021)
+sp_rho=cor(TREP_yearly,my_year,method="spearman")
+print(sp_rho)
+
+print(adf.test(TREP_yearly, alternative = "stationary"))
 ```
-
+Yes the results are in agreement with the test results for the non-aggregated series. The series is stochastic p-value>.05, and has a deterministic trend pvalue<.05.
