@@ -151,7 +151,7 @@ Acf(df_residential$NonSeasonalResidential,lag.max=40,main="Non Sesonal Residenti
 par(mar=c(3,3,3,0));par(mfrow=c(1,2))
 Pacf(df_residential$Residential,lag.max=40,main="Residential")
 Pacf(df_residential$NonSeasonalResidential,lag.max=40,main="Non Sesonal Residential")
-
+#waves are gone....Wave peak at 12, 24, 36.
 
 ```
 
@@ -225,6 +225,8 @@ Pacf(Model_111$residuals,lag.max=40)
 Model_011 <- Arima(deseasonal_residential_price,order=c(0,1,1),include.drift=TRUE)
 print(Model_011)
 compare_aic <- data.frame(compare_aic,Model_011$aic)
+compare_aic
+#second model better fit
 
 par(mar=c(3,3,3,0));par(mfrow=c(1,3))
 ts.plot(Model_011$residuals)
@@ -235,6 +237,7 @@ Pacf(Model_011$residuals,lag.max=40)
 Model_211 <- Arima(deseasonal_residential_price,order=c(2,1,1),include.drift=TRUE)
 print(Model_211)
 compare_aic <- data.frame(compare_aic,Model_211$aic)
+compare_aic
 
 par(mar=c(3,3,3,0));par(mfrow=c(1,3))
 ts.plot(Model_211$residuals)
@@ -245,6 +248,7 @@ Pacf(Model_211$residuals,lag.max=40)
 Model_112 <- Arima(deseasonal_residential_price,order=c(1,1,2),include.drift=TRUE)
 print(Model_112)
 compare_aic <- data.frame(compare_aic,Model_112$aic)
+compare_aic
 
 par(mar=c(3,3,3,0));par(mfrow=c(1,3))
 ts.plot(Model_112$residuals)
@@ -255,6 +259,7 @@ Pacf(Model_112$residuals,lag.max=40)
 Model_212 <- Arima(deseasonal_residential_price,order=c(2,1,2),include.drift=TRUE)
 print(Model_212)
 compare_aic <- data.frame(compare_aic,Model_212$aic)
+compare_aic
 
 par(mar=c(3,3,3,0));par(mfrow=c(1,3))
 ts.plot(Model_212$residuals)
@@ -350,7 +355,7 @@ ggplot(df_models) +
 
 cowplot::plot_grid(Plot1,Plot2,Plot3,Plot4,nrow=2)
 
-
+#model represents well the historical data.
 ```
 This is still non-seasonal data. If you want to compare to original series, you need to add seasonal component back.
 

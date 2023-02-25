@@ -1,7 +1,7 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2023"
 subtitle: "Assignment 5 - Due date 02/27/23"
-author: "Student Name"
+author: "Taro Katayama"
 output: pdf_document
 geometry: margin=2.54cm
 editor_options: 
@@ -22,7 +22,10 @@ R packages needed for this assignment: "xlsx" or "readxl", "ggplot2", "forecast"
 
 ```{r}
 #Load/install required package here
-library(xlsx)
+#install.packages("xlsx")
+library(readxl)
+#install.packages("openxlsx")
+library(openxlsx)
 library(forecast)
 library(tseries)
 library(ggplot2)
@@ -39,10 +42,14 @@ Consider the same data you used for A04 from the spreadsheet "Table_10.1_Renewab
 
 ```{r}
 #Importing data set - using xlsx package
-energy_data <- read.xlsx(file="./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",header=FALSE,startRow = 13,sheetIndex=1) #startRow is equivalent to skip on read.table
+getwd()
+table_10.1<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
+                        header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
 
+energy_data<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
+                        header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
 #Now let's extract the column names from row 11 only
-read_col_names <- read.xlsx(file="./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",header=FALSE,startRow = 11,endRow=11,sheetIndex=1)
+read_col_names <- read.xlsx("/Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",header=FALSE,startRow = 11,endRow=11,sheetIndex=1)
 
 colnames(energy_data) <- read_col_names
 head(energy_data)
