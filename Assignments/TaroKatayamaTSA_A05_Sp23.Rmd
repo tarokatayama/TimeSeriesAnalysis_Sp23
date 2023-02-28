@@ -43,13 +43,12 @@ Consider the same data you used for A04 from the spreadsheet "Table_10.1_Renewab
 ```{r}
 #Importing data set - using xlsx package
 getwd()
-table_10.1<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
-                        header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
+energy_data<-read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",
+                        skip=11)
 
-energy_data<- read.table(file= "./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source-Edit.csv",
-                        header=TRUE,dec = ".",sep=",",stringsAsFactors = TRUE)
 #Now let's extract the column names from row 11 only
-read_col_names <- read.xlsx("/Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",header=FALSE,startRow = 11,endRow=11,sheetIndex=1)
+read_col_names <- as.character(read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",
+                                          skip = 10, n_max = 1,col_names = FALSE))
 
 colnames(energy_data) <- read_col_names
 head(energy_data)
@@ -64,8 +63,15 @@ nvar=ncol(energy_data)
 For this assignment you will work only with the following columns: Solar Energy Consumption and Wind Energy Consumption. Create a data frame structure with these two time series only and the Date column. Drop the rows with *Not Available* and convert the columns to numeric. You can use filtering to eliminate the initial rows or convert to numeric and then use the drop_na() function. If you are familiar with pipes for data wrangling, try using it!
 
 ```{r}
+df<- energy_data%>%
+  select(Month, `Solar Energy Consumption`, `Wind Energy Consumption`)
 
+df$`Solar Energy Consumption`<- as.numeric(df$`Solar Energy Consumption`)
+df$`Wind Energy Consumption`<- as.numeric(df$`Wind Energy Consumption`)
 
+df<-df%>%
+  drop_na()
+df$Month<- as.Date(df$Month, "%Y-%m-%d", 'GMT')
 ```
 
 ### Q2
@@ -73,7 +79,19 @@ For this assignment you will work only with the following columns: Solar Energy 
 Plot the Solar and Wind energy consumption over time using ggplot. Plot each series on a separate graph. No need to add legend. Add informative names to the y axis using `ylab()`. Explore the function scale_x\_date() on ggplot and see if you can change the x axis to improve your plot. Hint: use *scale_x\_date(date_breaks = "5 years", date_labels = "%Y")")*
 
 ```{r}
+solar_plot<- ggplot(df)+
+  geom_line(aes(x=Month, y = `Solar Energy Consumption`))+
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y")+
+  labs(x="Year", y="Solar Energy Consumption (Trillion BTU)")+
+  theme_bw()
+solar_plot
 
+wind_plot<- ggplot(df)+
+  geom_line(aes(x=Month, y = `Wind Energy Consumption`))+
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y")+
+  labs(x="Year", y="Wind Energy Consumption (Trillion BTU)")+
+  theme_bw()
+wind_plot
 ```
 
 ### Q3
@@ -82,8 +100,16 @@ Now plot both series in the same graph, also using ggplot(). Look at lines 141-1
 
 ```{r}
 
-
-
+wind_solar_plots<-ggplot(df)+
+  geom_line(aes(x=Month, y=`Wind Energy Consumption`, color="Wind Energy"))+
+  geom_line(aes(x=Month, y=`Solar Energy Consumption`,color ="Solar Energy"))+
+  labs(color="") +
+  scale_color_manual(values = c("Solar Energy" = "red", "Wind Energy" = "blue"),
+                                labels=c("Solar Energy", "Wind Energy"))+
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y")+
+  labs(x="Year", y="Energy Consumption (Trillion BTU)")+
+  theme_bw()
+wind_solar_plots
 ```
 
 ### Q3
@@ -91,32 +117,55 @@ Now plot both series in the same graph, also using ggplot(). Look at lines 141-1
 Transform wind and solar series into a time series object and apply the decompose function on them using the additive option, i.e., `decompose(ts_data, type = "additive")`. What can you say about the trend component? What about the random component? Does the random component look random? Or does it appear to still have some seasonality on it?
 
 ```{r}
+ts_df<- ts(df[,2:3], frequency = 12)
 
+wind_decompose<-  decompose(ts_df[,2], type = "additive")
+plot(wind_decompose)
+
+solar_decompose<-  decompose(ts_df[,1], type = "additive")
+plot(solar_decompose)
 ```
+
+> Answer: The trend component has an exponential growth pattern for solar. The trend component increases relatively linearly over time for wind. There is definitely some seasonality left in both the solar and wind decompose random components. There is a repetitive up and down pattern for both, and the tail seems to increase in amplitude. 
 
 ### Q4
 
 Use the decompose function again but now change the type of the seasonal component from additive to multiplicative. What happened to the random component this time?
 
 ```{r}
+wind_decompose2<-  decompose(ts_df[,2], type = "multiplicative")
+plot(wind_decompose2)
 
+solar_decompose2<-  decompose(ts_df[,1], type = "multiplicative")
+plot(solar_decompose2)
 ```
+
+> Answer: The random component is again not random for both. I noticed that both the random series does not center around 0, which is strange. There seems to be larger oscillations in the first 15 lags for solar, and larger oscillations in the first 5 or so lags for wind. After those large oscillations, there is a repetitive up and down motion for both, suggesting some remaining seasonality. 
 
 ### Q5
 
 When fitting a model to this data, do you think you need all the historical data? Think about the data from 90s and early 20s. Are there any information from those years we might need to forecast the next six months of Solar and/or Wind consumption. Explain your response.
 
-> Answer:
+> Answer: We do not need all the historical data. This is because the trend does not start until around the mid 2000s. Before then, solar and wind energy consumption hovers around 0 because there simply were little to no wind or solar ventures. Once it hits mid 2000s solar and wind start to become more economically viable, leading to an increase. This extra information form the early 90s and 2000s makes our decompose series worse as we are not able to accurately create the trend, seasonality, and random component
 
 ### Q6
 
 Create a new time series object where historical data starts on January 2012. Hint: use `filter()` function so that you don't need to point to row numbers, .i.e, `filter(xxxx, year(Date) >= 2012 )`. Apply the decompose function `type=additive` to this new time series. Comment the results. Does the random component look random? Think about our discussion in class about seasonal components that depends on the level of the series. 
 
 ```{r}
+df_2012<- df%>%
+  filter(year(Month)>= "2012")
 
+ts_df_2012<- ts(df_2012[,2:3], frequency = 12)
+
+decompose_2012_solar<-  decompose(ts_df_2012[,1], type = "additive")
+plot(decompose_2012_solar)
+
+decompose_2012_wind<-  decompose(ts_df_2012[,2], type = "additive")
+plot(decompose_2012_wind)
 ```
 
-> Answer:
+> Answer:The solar random component does not look random. There is clear seasonality. The Wind random component looks to be more random. Taking out some of the extra data from the 90s and early 2000s allowed us to look more closely at the trend and how it affects the time series' trend, seasonality, and randomness. 
 
 
 
