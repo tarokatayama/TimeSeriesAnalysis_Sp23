@@ -43,12 +43,11 @@ Consider the same data you used for A04 from the spreadsheet "Table_10.1_Renewab
 ```{r}
 #Importing data set - using xlsx package
 getwd()
-energy_data<-read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",
+energy_data<-read_excel("./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",
                         skip=11)
 
 #Now let's extract the column names from row 11 only
-read_col_names <- as.character(read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",
-                                          skip = 10, n_max = 1,col_names = FALSE))
+read_col_names <- as.character(read_excel("./Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx", skip = 10, n_max = 1,col_names = FALSE))
 
 colnames(energy_data) <- read_col_names
 head(energy_data)
