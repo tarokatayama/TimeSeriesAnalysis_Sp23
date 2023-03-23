@@ -4,7 +4,7 @@ author: "Luana Lima"
 output: pdf_document
 always_allow_html: true
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ## Objectives
@@ -60,12 +60,13 @@ forecast=c(110,121,112,120,109)
 #Exercise 1: compute MAD, MSE and MAPE
 n=length(actual)
 
-ME = 
+mean_scores<- accuracy(forecast,actual)
+ME = 0.2
 MSE = 
-RMSE = 
-MAE = 
-MPE = 
-MAPE = 
+RMSE = 2.792848
+MAE = 2.6
+MPE = 0.07682323
+MAPE = 2.246655
 
 
 
