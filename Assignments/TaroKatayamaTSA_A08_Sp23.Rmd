@@ -1,9 +1,11 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2023"
 subtitle: "Assignment 8 - Due date 03/27/23"
-author: "Student Name"
+author: "Taro Katayama"
 output: pdf_document
 geometry: margin=2.54cm
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Directions
@@ -18,9 +20,17 @@ When you have completed the assignment, **Knit** the text and code into a single
 
 Some packages needed for this assignment: `forecast`,`tseries`,`smooth`. Do not forget to load them before running your script, since they are NOT default packages.
 
-```{r}
-#Load/install required package here
-
+```{r package, message=FALSE}
+library(lubridate)
+library(ggplot2)
+library(forecast)  
+library(Kendall)
+library(tseries)
+#library(outliers)
+library(tidyverse)
+library(smooth)
+install.packages("ggfortify")
+library(ggfortify)
 ```
 
 ## Importing and processing the data set
@@ -36,7 +46,31 @@ For all parts of the assignment prepare the data set such that the model conside
 Read the file into a data frame. Prepare your time series data vector such that observations start in January 2000 and end in December 2009. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
 
 ```{r}
+inflowdata<- read.table(file="./Data/inflowtimeseries.txt")
 
+inflow_processed<- inflowdata%>%
+  mutate( Date = my(paste0(V1, "-", V2)))%>%
+  rename(monthly_inflow = V17)%>%
+  select(Date, monthly_inflow)%>%
+  subset(Date> "1999-12-01" & Date< "2010-01-01")
+
+inflow_processed_full<- inflowdata%>%
+  mutate( Date = my(paste0(V1, "-", V2)))%>%
+  rename(monthly_inflow = V17)%>%
+  select(Date, monthly_inflow)%>%
+  subset(Date> "1999-12-01")
+
+
+inflow_ts<-ts(inflow_processed$monthly_inflow, start = c(2000,01), frequency = 12)
+
+ts_plot<- ggplot(inflow_processed, aes(x=Date, y=monthly_inflow))+
+  labs(y="Monthly Inflow m^{3}/s")+
+  geom_line()+theme_bw()
+
+plot(ts_plot)
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(inflow_processed$monthly_inflow, lag = 40, main = "ACF", plot = TRUE)
+PACF_Plot <- Pacf(inflow_processed$monthly_inflow, lag = 40, main= "PACF")
 ```
 
 ### Q2
@@ -44,7 +78,24 @@ Read the file into a data frame. Prepare your time series data vector such that 
 Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized inflow series. Plot the deseasonalized series and original series together using ggplot, make sure your plot includes a legend. Plot ACF and PACF for the deaseasonalized series. Compare with the plots obtained in Q1.
 
 ```{r}
+decompose_inflow<- decompose(inflow_ts, "additive")
+plot(decompose_inflow)
 
+deseasonal_inflow<- seasadj(decompose_inflow)
+
+bruh<- data.frame(inflow_processed, deseasonal=as.matrix(deseasonal_inflow))
+
+bruh_longer<- bruh%>%
+  pivot_longer(!Date, names_to = "inflow", values_to = "value")
+
+ggplot(bruh_longer) +
+  geom_line(aes(x=Date, y=value, color=inflow))+
+  labs(y="Monthly Inflow m^{3}/s")
+
+par(mfrow=c(1,2))
+Acf(deseasonal_inflow, lag = 40)
+Pacf(deseasonal_inflow, lag = 40)
+par(mfrow=c(1,1))
 ```
 
 ## Part II: Forecasting with ARIMA models and its variations
@@ -54,7 +105,18 @@ Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series
 Fit a non-seasonal ARIMA$(p,d,q)$ model using the auto.arima() function to the non-seasonal data. Forecast 12 months ahead of time using the $forecast()$ function. Plot your forecasting results and further include on the plot the last year of non-seasonal data to compare with forecasted values (similar to the plot on the lesson file for M10).
 
 ```{r}
+non_seas_ARIMA<- auto.arima(deseasonal_inflow, max.D = 0, max.P = 0, max.Q = 0)
+print(non_seas_ARIMA)
 
+ARIMA_forecast<- forecast(object = non_seas_ARIMA, h=12)
+plot(ARIMA_forecast)
+
+inflow_full_ts<- ts(inflow_processed_full,start = c(2000,01), frequency = 12)
+
+autoplot(inflow_full_ts)+
+  autolayer(ARIMA_forecast,series="ARIMA")
+
+?autolayer
 ```
 
 ### Q4
@@ -63,7 +125,14 @@ Put the seasonality back on your forecasted values and compare with the original
 
 
 ```{r}
+SARIMA_autofit <- auto.arima(inflow_ts)
+print(SARIMA_autofit)
 
+SARIMA_forecast <- forecast(object = SARIMA_autofit, h = 12)
+plot(SARIMA_forecast)
+
+autoplot(inflow_full_ts)+
+  autolayer(SARIMA_forecast,series="SARIMA")
 ```
 
 ### Q5

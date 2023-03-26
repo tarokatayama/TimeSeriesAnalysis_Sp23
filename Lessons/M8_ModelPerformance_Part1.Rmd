@@ -230,10 +230,7 @@ ts_electricity_price_full <- ts(
 
 autoplot(ts_electricity_price_full) +
     autolayer(SARIMA_for,series="SARIMA",PI=FALSE) +
-    autolayer(MEAN_seas,series="Arithmetic Mean",PI=FALSE) +
-    autolayer(SNAIVE_seas,series="Seasonal Naive",PI=FALSE) +
     ylab("Electricity Price") +
-    xlab("") +
     labs(col="Models")
 
 ```
