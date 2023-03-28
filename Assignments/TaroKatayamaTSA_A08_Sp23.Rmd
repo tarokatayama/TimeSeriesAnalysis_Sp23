@@ -26,11 +26,8 @@ library(ggplot2)
 library(forecast)  
 library(Kendall)
 library(tseries)
-#library(outliers)
 library(tidyverse)
 library(smooth)
-install.packages("ggfortify")
-library(ggfortify)
 ```
 
 ## Importing and processing the data set
@@ -46,31 +43,36 @@ For all parts of the assignment prepare the data set such that the model conside
 Read the file into a data frame. Prepare your time series data vector such that observations start in January 2000 and end in December 2009. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
 
 ```{r}
-inflowdata<- read.table(file="./Data/inflowtimeseries.txt")
+inflowdata<- read.table(file="../Data/inflowtimeseries.txt", sep = '\t', stringsAsFactors = TRUE)
 
-inflow_processed<- inflowdata%>%
-  mutate( Date = my(paste0(V1, "-", V2)))%>%
-  rename(monthly_inflow = V17)%>%
+inflow_data<- separate(inflowdata, col="V1", int=c('Date', 'V'), sep = ' ')
+
+inflow_processed<- inflow_data%>%
+  mutate( Date = my(paste0(Date, "-", V)))%>%
+  rename(monthly_inflow = V15)%>%
   select(Date, monthly_inflow)%>%
-  subset(Date> "1999-12-01" & Date< "2010-01-01")
+  filter(between(Date, as.Date('2000-01-01'), as.Date('2009-12-01')))
 
-inflow_processed_full<- inflowdata%>%
-  mutate( Date = my(paste0(V1, "-", V2)))%>%
-  rename(monthly_inflow = V17)%>%
+inflow_processed_full<- inflow_data%>%
+  mutate( Date = my(paste0(Date, "-", V)))%>%
+  rename(monthly_inflow = V15)%>%
   select(Date, monthly_inflow)%>%
-  subset(Date> "1999-12-01")
+  filter(between(Date, as.Date('2000-01-01'), as.Date('2010-12-01')))
 
 
-inflow_ts<-ts(inflow_processed$monthly_inflow, start = c(2000,01), frequency = 12)
+inflow_ts<-ts(inflow_processed[,2], 
+              start = c(year(inflow_processed$Date[1]), month(inflow_processed$Date[1])), 
+              frequency = 12)
 
 ts_plot<- ggplot(inflow_processed, aes(x=Date, y=monthly_inflow))+
   labs(y="Monthly Inflow m^{3}/s")+
   geom_line()+theme_bw()
 
 plot(ts_plot)
+
 par(mfrow=c(1,2))
 ACF_Plot <- Acf(inflow_processed$monthly_inflow, lag = 40, main = "ACF", plot = TRUE)
-PACF_Plot <- Pacf(inflow_processed$monthly_inflow, lag = 40, main= "PACF")
+PACF_Plot <- Pacf(inflow_processed$monthly_inflow, lag = 40, main= "PACF", plot= TRUE)
 ```
 
 ### Q2
@@ -83,20 +85,24 @@ plot(decompose_inflow)
 
 deseasonal_inflow<- seasadj(decompose_inflow)
 
-bruh<- data.frame(inflow_processed, deseasonal=as.matrix(deseasonal_inflow))
+df<- data.frame(inflow_processed, deseasonal=as.matrix(deseasonal_inflow))
 
-bruh_longer<- bruh%>%
+df_longer<- df%>%
   pivot_longer(!Date, names_to = "inflow", values_to = "value")
 
-ggplot(bruh_longer) +
+ggplot(df_longer) +
   geom_line(aes(x=Date, y=value, color=inflow))+
   labs(y="Monthly Inflow m^{3}/s")
 
 par(mfrow=c(1,2))
 Acf(deseasonal_inflow, lag = 40)
+plot(ACF_Plot)
 Pacf(deseasonal_inflow, lag = 40)
+plot(PACF_Plot)
 par(mfrow=c(1,1))
 ```
+
+>answer: The ACF in the original plot had clear seasonality. It oscillates back and forth. The ACF in the deseasoned plot still has some unexplained seasonality left in it. It still oscillates up and down, but has a decaying pattern. This suggests that the series is an AR model. The PACF in the original plot has a geometric shape. The PACF in the deseasonalized series has a less pronounced geometric shape. Since the ACF tells us that it is an AR model, we can tell that the cut off is at lag 1 from the PACF. 
 
 ## Part II: Forecasting with ARIMA models and its variations
 
@@ -111,12 +117,18 @@ print(non_seas_ARIMA)
 ARIMA_forecast<- forecast(object = non_seas_ARIMA, h=12)
 plot(ARIMA_forecast)
 
-inflow_full_ts<- ts(inflow_processed_full,start = c(2000,01), frequency = 12)
 
-autoplot(inflow_full_ts)+
-  autolayer(ARIMA_forecast,series="ARIMA")
+ts_inflow_full<- ts(inflow_processed_full[,2], start = c(2000,01), frequency = 12)
+decompose_inflow_full<- decompose(ts_inflow_full, "additive")
 
-?autolayer
+deseasonal_inflow_full<- seasadj(decompose_inflow_full)
+
+
+autoplot(deseasonal_inflow_full)+
+  autolayer(ARIMA_forecast,series="ARIMA", PI=FALSE)+
+  ylab("Inflow m^{3}/s")+
+  xlab("Date")+
+  labs(col="Model")
 ```
 
 ### Q4
@@ -125,14 +137,15 @@ Put the seasonality back on your forecasted values and compare with the original
 
 
 ```{r}
-SARIMA_autofit <- auto.arima(inflow_ts)
-print(SARIMA_autofit)
+seasonality<- decompose_inflow$seasonal[97:108]
 
-SARIMA_forecast <- forecast(object = SARIMA_autofit, h = 12)
-plot(SARIMA_forecast)
+for_and_seasonality<- ARIMA_forecast$mean + seasonality
 
-autoplot(inflow_full_ts)+
-  autolayer(SARIMA_forecast,series="SARIMA")
+autoplot(ts_inflow_full)+
+  autolayer(for_and_seasonality, series = "ARIMA Forecast + seasonality")+
+  ylab("Inflow m^{3}/s")+
+  xlab("Date")+
+  labs(col="Model")
 ```
 
 ### Q5
@@ -140,12 +153,33 @@ autoplot(inflow_full_ts)+
 Repeat Q3 for the original data, but now fit a seasonal ARIMA$(p,d,q)x(P,D,Q)_ {12}$ also using the auto.arima().
 
 ```{r}
+SARIMA_autofit <- auto.arima(inflow_ts)
+print(SARIMA_autofit)
 
+SARIMA_forecast <- forecast(object = SARIMA_autofit, h = 12)
+plot(SARIMA_forecast)
+
+autoplot(ts_inflow_full)+
+  autolayer(SARIMA_forecast,series="SARIMA Forecast", PI=FALSE)+
+  ylab("Inflow m^{3}/s")+
+  xlab("Date")+
+  labs(col="Model")
 ```
 
 ### Q6
 
 Compare the plots from Q4 and Q5 using the autoplot() function.
+
+```{r}
+autoplot(ts_inflow_full)+
+  autolayer(for_and_seasonality, series = "ARIMA Forecast + seasonality")+
+  autolayer(SARIMA_forecast,series="SARIMA Forecast", PI=FALSE)+
+  ylab("Inflow m^{3}/s")+
+  xlab("Date")+
+  labs(col="Model")
+```
+
+>The Sarima forecast did slightly better.
 
 ## Part III: Forecasting with Other Models
 
@@ -154,6 +188,10 @@ Compare the plots from Q4 and Q5 using the autoplot() function.
 Fit an exponential smooth model to the original time series using the function $ses()$  from package `forecast`. Note that this function automatically do the forecast. Do not forget to set the arguments: silent=FALSE and holdout=FALSE, so that the plot is produced and the forecast is for the year of 2010.
 
 ```{r}
+
+SES_seas_fit <- ses(y = inflow_ts, h = 12, holdout = FALSE, silent = FALSE)
+summary(SES_seas_fit)
+plot(SES_seas_fit)
 
 ```
 
@@ -166,6 +204,18 @@ Make one plot with the complete original seasonal historical data (Jan 2000 to D
 
 
 ```{r}
+ts_plot_full<- ggplot(inflow_processed_full, aes(x=Date, y=monthly_inflow))+
+  labs(y="Monthly Inflow m^{3}/s")+
+  geom_line()+theme_bw()
+ts_plot_full
+
+autoplot(ts_inflow_full)+
+  autolayer(for_and_seasonality, series = "ARIMA Forecast + seasonality")+
+  autolayer(SARIMA_forecast,series="SARIMA Forecast", PI=FALSE)+
+  autolayer(SES_seas_fit, series="Exponential Smoothing", PI=FALSE)+
+  ylab("Inflow m^{3}/s")+
+  xlab("Date")+
+  labs(col="Model")
 
 ```
 
@@ -173,16 +223,49 @@ Make one plot with the complete original seasonal historical data (Jan 2000 to D
 
 From the plot in Q9 which model or model(s) are leading to the better forecasts? Explain your answer. Hint: Think about which models are doing a better job forecasting the high and low inflow months for example.
 
+>answer:The Seasonal arima foreast does the best at forecasting. The highs and lows for the seasonal arima forecast are most closely aligned with the highs and lows of the original data. The ARIMA forecast with seasonality added back in it does the second best job at forecasting. It follows the trend pretty nicely, but the highs and lows are more exaggerated than the seasonal arima forecast. The Exponential smoothing only provides a mean of inflow, which does not reflect the inflows well.
 
-```{r}
-
-```
 
 ### Q10
 
 Now compute the following forecast metrics we learned in class: RMSE and MAPE,  for all the models you plotted in part Q9. You can do this by hand since your have forecasted and observed values for the year of 2010. Or you can use R function $accuracy()$ from package "forecast" to do it. Build and a table with the results and highlight the model with the lowest MAPE. Does the lowest MAPE corresponds match your answer for part Q10?
 
-```{r}
+$MSE = \sum(Actual - Forecast)^2/n$ 
+$RMSE = sqrt(MSE)$
+$MAPE = \sum|Actual - Forecast|/Actual/n*100$ 
 
+```{r}
+observed_2010<- ts_inflow_full[121:132]
+
+forecast_values_df<- data.frame(Observed=observed_2010,
+                                ARIMA_SEAS=as.matrix(for_and_seasonality),
+                                SARIMA=SARIMA_forecast$mean,
+                                SES=SES_seas_fit$mean)
+
+observed = forecast_values_df$Observed
+n=12
+
+#ARIMA + Seasonality
+MSE_ARIMA_SEAS = sum((observed - forecast_values_df$ARIMA_SEAS)^2)/n
+RMSE_ARIMA_SEAS = sqrt(MSE_ARIMA_SEAS)
+MAPE_ARIMA_SEAS = sum(abs(observed - forecast_values_df$ARIMA_SEAS)/observed)/n*100
+
+#SARIMA
+MSE_SARIMA = sum((observed - forecast_values_df$SARIMA)^2)/n
+RMSE_SARIMA = sqrt(MSE_SARIMA)
+MAPE_SARIMA = sum(abs(observed - forecast_values_df$SARIMA)/observed)/n*100
+
+#SES
+MSE_SES = sum((observed - forecast_values_df$SES)^2)/n
+RMSE_SES = sqrt(MSE_SES)
+MAPE_SES = sum(abs(observed - forecast_values_df$SES)/observed)/n*100
+
+scores<- data.frame(RMSE = c(RMSE_ARIMA_SEAS,RMSE_SARIMA,RMSE_SES),
+                    MAPE = c(MAPE_ARIMA_SEAS, MAPE_SARIMA, MAPE_SES))
+
+rownames(scores) = c("ARIMA and Seasonality", "SARIMA", "SES")
+
+scores
 ```
 
+>answer: Yes it matches my answer from Q9. The lowest MAPE score is of the SARIMA forecast at 23.873!
